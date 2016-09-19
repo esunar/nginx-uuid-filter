@@ -48,6 +48,7 @@ typedef struct {
     time_t      expires;
 
     u_char      mark;
+    ngx_flag_t  secure;
 } ngx_http_uuid_conf_t;
 
 
@@ -154,6 +155,13 @@ static ngx_command_t  ngx_http_uuid_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_uuid_conf_t, p3p),
       &ngx_http_uuid_p3p_p },
+
+    { ngx_string("uuid_secure"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uuid_conf_t, secure),
+      NULL },
 
     { ngx_string("uuid_mark"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -352,6 +360,10 @@ ngx_http_uuid_set_uid(ngx_http_request_t *r, ngx_http_uuid_ctx_t *ctx,
         len += sizeof(expires) - 1 + 2;
     }
 
+    if (conf->secure) {
+        len += sizeof("; Secure") - 1;
+    }
+
     if (conf->domain.len) {
         len += conf->domain.len;
     }
@@ -383,8 +395,12 @@ ngx_http_uuid_set_uid(ngx_http_request_t *r, ngx_http_uuid_ctx_t *ctx,
     }
 
     p = ngx_copy(p, conf->domain.data, conf->domain.len);
-
     p = ngx_copy(p, conf->path.data, conf->path.len);
+
+    if(conf->secure){
+        p = ngx_cpymem(p, "; Secure", sizeof("; Secure") - 1);
+    }
+  
 
     set_cookie = ngx_list_push(&r->headers_out.headers);
     if (set_cookie == NULL) {
@@ -488,6 +504,7 @@ ngx_http_uuid_create_conf(ngx_conf_t *cf)
     conf->enable = NGX_CONF_UNSET_UINT;
     conf->service = NGX_CONF_UNSET;
     conf->expires = NGX_CONF_UNSET;
+    conf->secure = NGX_CONF_UNSET;
     conf->mark = (u_char) '\xFF';
 
     return conf;
@@ -503,6 +520,7 @@ ngx_http_uuid_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->enable, prev->enable,
                               NGX_HTTP_USERID_OFF);
 
+    ngx_conf_merge_value(conf->secure, prev->secure, 0);
     ngx_conf_merge_str_value(conf->name, prev->name, "uid");
     ngx_conf_merge_str_value(conf->domain, prev->domain, "");
     ngx_conf_merge_str_value(conf->path, prev->path, "; path=/");
@@ -610,10 +628,6 @@ ngx_http_uuid_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ucf->expires = ngx_parse_time(&value[1], 1);
     if (ucf->expires == NGX_ERROR) {
         return "invalid value";
-    }
-
-    if (ucf->expires == NGX_PARSE_LARGE_TIME) {
-        return "value must be less than 68 years";
     }
 
     return NGX_CONF_OK;

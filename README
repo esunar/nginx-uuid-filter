@@ -23,6 +23,7 @@ Usage:
 --
 
 Add to your Nginx config file's http block the following directives:
+Added secure flag for implementing secure cookies
 
     # Use UUID Module for cookie generation and tracking
     uuid            on;
@@ -31,11 +32,12 @@ Add to your Nginx config file's http block the following directives:
     uuid_path       /;
     uuid_expires    max;
     uuid_p3p        'CP="NOI CUR ADM OUR NOR STA NID"';
+    uuid_secure     off;
 
 Contributing:
 --
 
 Git source repositories:
-http://github.com/eliast/nginx-uuid-filter/tree/master
+https://github.com/esunar/nginx-uuid-filter
 
 Please feel free to fork the project at GitHub and submit pull requests or patches.
